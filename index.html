@@ -4,778 +4,306 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LexAI — 契約書チェックサービス</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&family=DM+Mono:wght@400;500&family=Shippori+Mincho:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
   :root {
-    --ink: #1a1714;
-    --paper: #f5f0e8;
-    --cream: #ede8dc;
-    --sienna: #8b3a2a;
-    --gold: #c9a84c;
-    --risk-high: #c0392b;
-    --risk-mid: #d68910;
-    --risk-low: #27ae60;
-    --border: rgba(26,23,20,0.15);
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-sub: #6b7280;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --high: #dc2626; --high-bg: #fef2f2;
+    --mid: #d97706;  --mid-bg:  #fffbeb;
+    --low: #16a34a;  --low-bg:  #f0fdf4;
+    --nego: #7c3aed; --nego-bg: #f5f3ff;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    background: var(--paper);
-    color: var(--ink);
-    font-family: 'Shippori Mincho', 'Noto Serif JP', serif;
-    min-height: 100vh;
-    position: relative;
-    overflow-x: hidden;
-  }
-
-  /* Paper texture */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Noto Sans JP',sans-serif; min-height:100vh; font-size:14px; line-height:1.6; }
 
   /* Header */
-  header {
-    position: relative;
-    z-index: 10;
-    border-bottom: 2px solid var(--ink);
-    padding: 0 40px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    height: 72px;
-    background: var(--ink);
-  }
+  header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 32px; height:60px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50; }
+  .logo { font-size:18px; font-weight:700; letter-spacing:-0.02em; }
+  .logo span { color:var(--accent); }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .header-badge { font-size:11px; color:var(--text-sub); background:var(--bg); padding:4px 10px; border-radius:20px; border:1px solid var(--border); }
+  .apikey-btn { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:500; padding:6px 14px; border-radius:6px; border:1px solid var(--border); background:var(--surface); color:var(--text-sub); cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .apikey-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .apikey-btn.set { border-color:#16a34a; color:#16a34a; background:#f0fdf4; }
 
-  .logo {
-    font-family: 'DM Mono', monospace;
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--paper);
-    letter-spacing: 0.05em;
-  }
+  /* Layout */
+  main { max-width:1280px; margin:0 auto; padding:28px 24px; display:grid; grid-template-columns:460px 1fr; gap:20px; align-items:start; }
 
-  .logo span {
-    color: var(--gold);
-  }
+  /* Card */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:12px; }
+  .card-header { padding:18px 20px 0; font-size:12px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.06em; }
+  .card-body { padding:16px 20px 20px; }
 
-  .header-sub {
-    font-size: 11px;
-    color: rgba(245,240,232,0.5);
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    font-family: 'DM Mono', monospace;
-  }
+  /* Type chips */
+  .type-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
+  .type-chip { font-size:12px; font-weight:500; padding:5px 12px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text-sub); cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .type-chip:hover { border-color:var(--accent); color:var(--accent); }
+  .type-chip.active { background:var(--accent); color:#fff; border-color:var(--accent); }
 
-  /* Main layout */
-  main {
-    position: relative;
-    z-index: 1;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-    min-height: calc(100vh - 72px);
-  }
+  /* File tabs */
+  .file-tabs { display:flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:12px; background:var(--bg); padding:2px; gap:2px; }
+  .file-tab { flex:1; padding:7px 6px; font-size:12px; font-weight:500; border:none; background:transparent; color:var(--text-sub); cursor:pointer; transition:all 0.15s; font-family:inherit; border-radius:6px; }
+  .file-tab.active { background:var(--surface); color:var(--accent); box-shadow:var(--shadow); }
+  .upload-section { display:none; }
+  .upload-section.active { display:block; }
 
-  /* Left panel - input */
-  .panel-input {
-    border-right: 2px solid var(--ink);
-    display: flex;
-    flex-direction: column;
-    padding: 40px;
-  }
+  /* Upload zone */
+  .upload-zone { border:2px dashed var(--border); border-radius:8px; padding:24px; text-align:center; cursor:pointer; transition:all 0.15s; background:var(--bg); }
+  .upload-zone:hover { border-color:var(--accent); background:#eff6ff; }
+  .upload-zone .icon { font-size:28px; margin-bottom:8px; }
+  .upload-zone p { font-size:13px; color:var(--text-sub); }
+  .upload-zone small { font-size:11px; color:#9ca3af; }
 
-  .panel-label {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--sienna);
-    margin-bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
+  /* File tag */
+  .file-tag { display:none; align-items:center; gap:8px; margin-top:8px; padding:6px 12px; background:var(--low-bg); border:1px solid #bbf7d0; border-radius:6px; font-size:12px; color:var(--low); font-weight:500; }
+  .file-tag.show { display:flex; }
+  .file-tag button { margin-left:auto; background:none; border:none; cursor:pointer; color:inherit; font-size:14px; }
 
-  .panel-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
+  /* Google docs */
+  .gdocs-row { display:flex; gap:8px; }
+  .gdocs-input { flex:1; padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-size:12px; font-family:inherit; outline:none; color:var(--text); background:var(--bg); transition:border-color 0.15s; }
+  .gdocs-input:focus { border-color:var(--accent); background:#fff; }
+  .gdocs-input::placeholder { color:#9ca3af; }
+  .gdocs-btn { padding:9px 16px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:background 0.15s; white-space:nowrap; }
+  .gdocs-btn:hover { background:var(--accent-hover); }
 
-  .contract-type-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 24px;
-    flex-wrap: wrap;
-  }
-
-  .type-chip {
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    padding: 6px 14px;
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    cursor: pointer;
-    transition: all 0.15s;
-    background: transparent;
-    color: var(--ink);
-    letter-spacing: 0.05em;
-  }
-
-  .type-chip:hover, .type-chip.active {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
-  }
-
-  .textarea-wrap {
-    flex: 1;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-  }
-
-  textarea {
-    flex: 1;
-    min-height: 380px;
-    width: 100%;
-    background: var(--cream);
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    padding: 20px;
-    font-family: 'Shippori Mincho', serif;
-    font-size: 13.5px;
-    line-height: 1.9;
-    color: var(--ink);
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  textarea:focus {
-    border-color: var(--sienna);
-  }
-
-  textarea::placeholder {
-    color: rgba(26,23,20,0.35);
-    font-size: 13px;
-  }
-
-  .char-count {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    color: rgba(26,23,20,0.4);
-    text-align: right;
-    margin-top: 6px;
-    letter-spacing: 0.05em;
-  }
-
-  /* Upload area */
-  .upload-zone {
-    border: 1.5px dashed var(--border);
-    border-radius: 2px;
-    padding: 20px;
-    text-align: center;
-    cursor: pointer;
-    margin-bottom: 16px;
-    transition: all 0.2s;
-    background: transparent;
-  }
-
-  .upload-zone:hover {
-    border-color: var(--sienna);
-    background: rgba(139,58,42,0.04);
-  }
-
-  .upload-zone p {
-    font-size: 12px;
-    color: rgba(26,23,20,0.5);
-    font-family: 'DM Mono', monospace;
-  }
-
-  .upload-zone .upload-icon {
-    font-size: 24px;
-    margin-bottom: 8px;
-    display: block;
-  }
+  /* Textarea */
+  textarea { width:100%; min-height:240px; padding:12px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; line-height:1.7; color:var(--text); background:var(--bg); resize:vertical; outline:none; transition:border-color 0.15s; margin-top:12px; }
+  textarea:focus { border-color:var(--accent); background:#fff; }
+  textarea::placeholder { color:#9ca3af; }
+  .char-count { font-size:11px; color:#9ca3af; text-align:right; margin-top:4px; }
 
   /* Check button */
-  .btn-check {
-    margin-top: 24px;
-    width: 100%;
-    padding: 18px;
-    background: var(--sienna);
-    color: var(--paper);
-    border: none;
-    border-radius: 2px;
-    font-family: 'Noto Serif JP', serif;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: 0.1em;
-    transition: all 0.2s;
-    position: relative;
-    overflow: hidden;
-  }
+  .btn-check { width:100%; margin-top:16px; padding:14px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit; transition:background 0.15s; letter-spacing:0.02em; }
+  .btn-check:hover { background:var(--accent-hover); }
 
-  .btn-check::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0);
-    transition: background 0.2s;
-  }
+  /* Empty state */
+  .empty-state { text-align:center; padding:60px 20px; color:var(--text-sub); }
+  .empty-state .icon { font-size:40px; margin-bottom:12px; }
 
-  .btn-check:hover::before {
-    background: rgba(255,255,255,0.1);
-  }
+  /* Score banner */
+  .score-banner { display:flex; align-items:center; gap:16px; padding:20px; border-radius:var(--radius); background:var(--surface); border:1px solid var(--border); margin-bottom:12px; box-shadow:var(--shadow); }
+  .score-donut { width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; flex-shrink:0; }
+  .score-donut.high { background:var(--high-bg); color:var(--high); }
+  .score-donut.mid  { background:var(--mid-bg);  color:var(--mid);  }
+  .score-donut.low  { background:var(--low-bg);  color:var(--low);  }
+  .score-info h2 { font-size:17px; font-weight:700; margin-bottom:4px; }
+  .score-info p { font-size:13px; color:var(--text-sub); }
 
-  .btn-check:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
+  /* Section label */
+  .section-label { font-size:12px; font-weight:700; color:var(--text-sub); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); }
 
-  .btn-check .spinner {
-    display: none;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(245,240,232,0.3);
-    border-top-color: var(--paper);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin: 0 auto;
-  }
+  /* Risk pill */
+  .risk-pill { display:inline-block; font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; margin-bottom:6px; }
+  .risk-pill.high { background:var(--high-bg); color:var(--high); }
+  .risk-pill.mid  { background:var(--mid-bg);  color:var(--mid);  }
+  .risk-pill.low  { background:var(--low-bg);  color:var(--low);  }
 
-  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Badge */
+  .badge { display:inline-block; font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; }
+  .badge.high { background:#fee2e2; color:var(--high); }
+  .badge.mid  { background:#fef3c7; color:#92400e; }
+  .badge.low  { background:#dcfce7; color:#166534; }
+  .badge.nego { background:#ede9fe; color:var(--nego); }
 
-  /* Right panel - results */
-  .panel-result {
-    display: flex;
-    flex-direction: column;
-    padding: 40px;
-    background: var(--cream);
-  }
+  /* Item list */
+  .item-list { display:flex; flex-direction:column; gap:10px; }
+  .risk-item { border-radius:8px; padding:14px 16px; border-left:3px solid; }
+  .risk-item.high { background:var(--high-bg); border-color:var(--high); }
+  .risk-item.mid  { background:var(--mid-bg);  border-color:var(--mid); }
+  .risk-item.low  { background:var(--low-bg);  border-color:var(--low); }
+  .risk-item.neutral { background:#f9fafb; border-color:#d1d5db; }
+  .item-title { font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .item-desc { font-size:12.5px; line-height:1.75; color:#374151; }
+  .item-suggestion { margin-top:10px; padding:8px 12px; background:rgba(255,255,255,0.7); border-radius:6px; font-size:12px; line-height:1.7; color:#374151; border:1px solid rgba(0,0,0,0.06); }
+  .item-suggestion::before { content:'💡 改善提案: '; font-weight:600; color:var(--mid); }
 
-  .empty-state {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    opacity: 0.4;
-  }
+  /* Nego items */
+  .nego-item { background:var(--nego-bg); border-left:3px solid var(--nego); border-radius:8px; padding:14px 16px; }
+  .nego-item.high { border-color:var(--high); background:var(--high-bg); }
+  .nego-item.low  { border-color:var(--low);  background:var(--low-bg); }
+  .nego-title { font-size:13px; font-weight:600; margin-bottom:6px; display:flex; align-items:center; gap:8px; color:var(--nego); flex-wrap:wrap; }
+  .nego-item.high .nego-title { color:var(--high); }
+  .nego-item.low  .nego-title { color:var(--low); }
+  .nego-approach { font-size:12.5px; line-height:1.75; color:#374151; margin-bottom:10px; }
+  .nego-script { padding:10px 12px; background:rgba(255,255,255,0.8); border-radius:6px; font-size:12px; line-height:1.75; color:#374151; border:1px solid rgba(0,0,0,0.06); white-space:pre-wrap; }
+  .nego-script::before { content:'💬 文例: '; font-weight:600; color:var(--nego); }
 
-  .empty-state .seal {
-    width: 80px;
-    height: 80px;
-    border: 3px solid var(--ink);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 32px;
-  }
+  /* Loading */
+  .loading-overlay { display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); backdrop-filter:blur(4px); z-index:100; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+  .loading-overlay.show { display:flex; }
+  .spinner-large { width:44px; height:44px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .loading-text { font-size:14px; font-weight:500; color:var(--text-sub); }
 
-  .empty-state p {
-    font-size: 12px;
-    font-family: 'DM Mono', monospace;
-    letter-spacing: 0.1em;
-  }
+  /* Modal */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(2px); z-index:200; align-items:center; justify-content:center; }
+  .modal-overlay.show { display:flex; }
+  .modal-box { background:var(--surface); border-radius:12px; padding:32px; width:460px; max-width:92vw; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
+  .modal-box h2 { font-size:17px; font-weight:700; margin-bottom:8px; }
+  .modal-box p { font-size:13px; color:var(--text-sub); line-height:1.7; margin-bottom:20px; }
+  .modal-box a { color:var(--accent); }
+  .modal-input-row { display:flex; gap:8px; margin-bottom:10px; }
+  .modal-input { flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:13px; font-family:inherit; outline:none; transition:border-color 0.15s; background:var(--bg); }
+  .modal-input:focus { border-color:var(--accent); }
+  .modal-save-btn { padding:10px 20px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .modal-save-btn:hover { background:var(--accent-hover); }
+  .modal-note { font-size:11px !important; color:#9ca3af !important; margin-bottom:0 !important; }
 
-  /* Result card */
-  .result-content {
-    display: none;
-    flex-direction: column;
-    gap: 24px;
-    animation: fadeUp 0.4s ease;
-  }
-
-  @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(12px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Score badge */
-  .score-banner {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 20px 24px;
-    border: 2px solid var(--ink);
-    border-radius: 2px;
-    background: var(--paper);
-  }
-
-  .score-circle {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'DM Mono', monospace;
-    font-size: 22px;
-    font-weight: 500;
-    flex-shrink: 0;
-    border: 3px solid;
-  }
-
-  .score-circle.high { border-color: var(--risk-high); color: var(--risk-high); }
-  .score-circle.mid  { border-color: var(--risk-mid);  color: var(--risk-mid);  }
-  .score-circle.low  { border-color: var(--risk-low);  color: var(--risk-low);  }
-
-  .score-text h2 {
-    font-size: 17px;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-
-  .score-text p {
-    font-size: 12px;
-    font-family: 'DM Mono', monospace;
-    color: rgba(26,23,20,0.55);
-    letter-spacing: 0.05em;
-  }
-
-  /* Section */
-  .result-section {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .result-section-title {
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--sienna);
-    padding-bottom: 8px;
-    border-bottom: 1.5px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  /* Risk item */
-  .risk-item {
-    padding: 14px 16px;
-    border-left: 3px solid;
-    background: var(--paper);
-    border-radius: 0 2px 2px 0;
-    position: relative;
-  }
-
-  .risk-item.high { border-color: var(--risk-high); }
-  .risk-item.mid  { border-color: var(--risk-mid);  }
-  .risk-item.low  { border-color: var(--risk-low);  }
-
-  .risk-item-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-  }
-
-  .risk-badge {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 1px;
-    font-weight: 500;
-  }
-
-  .risk-badge.high { background: #fdf2f0; color: var(--risk-high); }
-  .risk-badge.mid  { background: #fdf8ec; color: var(--risk-mid);  }
-  .risk-badge.low  { background: #edfbf0; color: var(--risk-low);  }
-
-  .risk-title {
-    font-size: 13px;
-    font-weight: 600;
-    flex: 1;
-  }
-
-  .risk-desc {
-    font-size: 12.5px;
-    line-height: 1.75;
-    color: rgba(26,23,20,0.75);
-  }
-
-  .risk-suggestion {
-    margin-top: 8px;
-    padding: 8px 12px;
-    background: rgba(201,168,76,0.1);
-    border-radius: 2px;
-    font-size: 12px;
-    line-height: 1.7;
-    color: rgba(26,23,20,0.8);
-  }
-
-  .risk-suggestion::before {
-    content: '💡 改善提案: ';
-    font-weight: 600;
-    color: var(--gold);
-  }
-
-  /* Google Docs input row */
-  .gdocs-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .gdocs-input {
-    flex: 1;
-    padding: 9px 12px;
-    background: var(--cream);
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--ink);
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .gdocs-input:focus { border-color: var(--sienna); }
-  .gdocs-input::placeholder { color: rgba(26,23,20,0.35); }
-
-  .gdocs-btn {
-    padding: 9px 14px;
-    background: var(--ink);
-    color: var(--paper);
-    border: none;
-    border-radius: 2px;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: opacity 0.2s;
-  }
-
-  .gdocs-btn:hover { opacity: 0.8; }
-
-  /* File type tabs */
-  .file-tabs {
-    display: flex;
-    gap: 0;
-    margin-bottom: 0;
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .file-tab {
-    flex: 1;
-    padding: 7px 4px;
-    border: none;
-    background: transparent;
-    font-family: 'DM Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.05em;
-    cursor: pointer;
-    color: rgba(26,23,20,0.5);
-    transition: all 0.15s;
-    border-right: 1px solid var(--border);
-  }
-
-  .file-tab:last-child { border-right: none; }
-  .file-tab.active { background: var(--ink); color: var(--paper); }
-  .file-tab:hover:not(.active) { background: var(--cream); color: var(--ink); }
-
-  /* Upload sections */
-  .upload-section { display: none; }
-  .upload-section.active { display: block; }
-
-  /* File name tag */
-  .file-tag {
-    display: none;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 12px;
-    background: rgba(27,167,64,0.08);
-    border: 1px solid rgba(39,174,96,0.3);
-    border-radius: 2px;
-    margin-top: 8px;
-    font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    color: var(--risk-low);
-  }
-
-  .file-tag.show { display: flex; }
-
-  .file-tag-close {
-    margin-left: auto;
-    cursor: pointer;
-    opacity: 0.6;
-    font-size: 14px;
-    background: none;
-    border: none;
-    color: inherit;
-  }
-  .summary-box {
-    padding: 16px 18px;
-    background: var(--paper);
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    font-size: 13px;
-    line-height: 1.85;
-    color: rgba(26,23,20,0.8);
-  }
-
-  /* Negotiation cards */
-  .nego-item {
-    padding: 14px 16px;
-    background: var(--paper);
-    border: 1.5px solid var(--border);
-    border-radius: 2px;
-    border-left: 3px solid var(--gold);
-  }
-
-  .nego-item.high { border-left-color: var(--risk-high); }
-  .nego-item.mid  { border-left-color: var(--gold); }
-  .nego-item.low  { border-left-color: var(--risk-low); }
-
-  .nego-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .nego-priority {
-    font-family: 'DM Mono', monospace;
-    font-size: 9px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 2px 7px;
-    border-radius: 1px;
-  }
-
-  .nego-priority.high { background: #fdf2f0; color: var(--risk-high); }
-  .nego-priority.mid  { background: #fdf8ec; color: #a07010; }
-  .nego-priority.low  { background: #edfbf0; color: var(--risk-low); }
-
-  .nego-point {
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .nego-approach {
-    font-size: 12.5px;
-    line-height: 1.75;
-    color: rgba(26,23,20,0.75);
-    margin-bottom: 10px;
-  }
-
-  .nego-script {
-    background: rgba(26,23,20,0.04);
-    border-left: 2px solid var(--gold);
-    padding: 10px 14px;
-    font-size: 12px;
-    line-height: 1.8;
-    color: rgba(26,23,20,0.85);
-    border-radius: 0 2px 2px 0;
-    font-style: italic;
-    white-space: pre-wrap;
-  }
-
-  .nego-script::before {
-    content: '💬 ';
-    font-style: normal;
-  }
-
-  /* Loading overlay */
-  .loading-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(245,240,232,0.9);
-    z-index: 100;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 20px;
-  }
-
-  .loading-overlay.show { display: flex; }
-
-  .loading-text {
-    font-family: 'DM Mono', monospace;
-    font-size: 13px;
-    letter-spacing: 0.15em;
-    color: var(--ink);
-    animation: pulse 1.5s ease-in-out infinite;
-  }
-
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-  .loading-bar-wrap {
-    width: 240px;
-    height: 2px;
-    background: var(--border);
-    border-radius: 1px;
-    overflow: hidden;
-  }
-
-  .loading-bar {
-    height: 100%;
-    background: var(--sienna);
-    border-radius: 1px;
-    animation: loadBar 2s ease-in-out infinite;
-  }
-
-  @keyframes loadBar {
-    0% { width: 0; transform: translateX(0); }
-    50% { width: 70%; }
-    100% { width: 100%; transform: translateX(0); }
-  }
-
-  /* Watermark decoration */
-  .watermark {
-    position: fixed;
-    bottom: -40px;
-    right: -40px;
-    width: 280px;
-    height: 280px;
-    border: 40px solid rgba(26,23,20,0.04);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 0;
-  }
+  /* Animations */
+  .card { animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
 
   /* Responsive */
-  @media (max-width: 900px) {
-    main { grid-template-columns: 1fr; }
-    .panel-input { border-right: none; border-bottom: 2px solid var(--ink); }
+  @media (max-width:900px) {
+    main { grid-template-columns:1fr; padding:16px; }
+    header { padding:0 16px; }
+    .header-badge { display:none; }
   }
 </style>
 </head>
 <body>
 
-<div class="watermark"></div>
-
 <div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner-large"></div>
   <div class="loading-text" id="loadingText">契約書を解析中...</div>
-  <div class="loading-bar-wrap"><div class="loading-bar"></div></div>
+</div>
+
+<div class="modal-overlay" id="apikeyModal">
+  <div class="modal-box">
+    <h2>🔑 APIキーの設定</h2>
+    <p>Anthropic のAPIキーを入力してください。キーはブラウザにのみ保存され、外部には送信されません。<br>
+    取得は <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> から。</p>
+    <div class="modal-input-row">
+      <input class="modal-input" id="apikeyInput" type="password" placeholder="sk-ant-api03-..." />
+      <button class="modal-save-btn" onclick="saveApiKey()">保存</button>
+    </div>
+    <p class="modal-note">※ キーはlocalStorageに保存されます。共有PCでのご利用はご注意ください。</p>
+  </div>
 </div>
 
 <header>
   <div class="logo">Lex<span>AI</span></div>
-  <div class="header-sub">契約書 AI チェックサービス</div>
+  <div class="header-right">
+    <div class="header-badge">契約書 AI チェックサービス</div>
+    <button class="apikey-btn" id="apikeyStatusBtn" onclick="openApiKeyModal()">
+      <span id="apikeyStatusIcon">🔑</span>
+      <span id="apikeyStatusText">APIキーを設定</span>
+    </button>
+  </div>
 </header>
 
 <main>
-  <!-- Left: Input -->
-  <div class="panel-input">
-    <div class="panel-label">契約書の種類</div>
+  <div>
+    <div class="card">
+      <div class="card-header">契約書の種類</div>
+      <div class="card-body">
+        <div class="type-row">
+          <button class="type-chip active" onclick="setType(this)">自動検出</button>
+          <button class="type-chip" onclick="setType(this)">業務委託</button>
+          <button class="type-chip" onclick="setType(this)">売買契約</button>
+          <button class="type-chip" onclick="setType(this)">NDA</button>
+          <button class="type-chip" onclick="setType(this)">雇用契約</button>
+          <button class="type-chip" onclick="setType(this)">賃貸借</button>
+          <button class="type-chip" onclick="setType(this)">その他</button>
+        </div>
 
-    <div class="contract-type-row">
-      <button class="type-chip active" onclick="setType(this)">自動検出</button>
-      <button class="type-chip" onclick="setType(this)">業務委託</button>
-      <button class="type-chip" onclick="setType(this)">売買契約</button>
-      <button class="type-chip" onclick="setType(this)">NDA</button>
-      <button class="type-chip" onclick="setType(this)">雇用契約</button>
-      <button class="type-chip" onclick="setType(this)">賃貸借</button>
-      <button class="type-chip" onclick="setType(this)">その他</button>
-    </div>
+        <div class="file-tabs">
+          <button class="file-tab active" onclick="switchTab(this,'tab-file')">📎 ファイル</button>
+          <button class="file-tab" onclick="switchTab(this,'tab-gdocs')">🔗 Google Docs</button>
+          <button class="file-tab" onclick="switchTab(this,'tab-paste')">✏️ テキスト</button>
+        </div>
 
-    <div class="panel-label">契約書テキスト</div>
+        <div class="upload-section active" id="tab-file">
+          <div class="upload-zone" id="uploadZone"
+            onclick="document.getElementById('fileInput').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--accent)'"
+            ondragleave="this.style.borderColor=''"
+            ondrop="handleDrop(event)">
+            <div class="icon">📄</div>
+            <p>クリックまたはドラッグ＆ドロップ</p>
+            <small>PDF・Word(.docx)・テキスト(.txt/.md) 対応</small>
+          </div>
+          <input type="file" id="fileInput" accept=".txt,.md,.pdf,.docx" style="display:none" onchange="handleFile(event)">
+          <div class="file-tag" id="fileTag">
+            <span id="fileTagName">—</span>
+            <button onclick="clearFile()">✕</button>
+          </div>
+        </div>
 
-    <!-- File format tabs -->
-    <div class="file-tabs" style="margin-bottom:12px;">
-      <button class="file-tab active" onclick="switchTab(this,'tab-file')">📎 ファイル</button>
-      <button class="file-tab" onclick="switchTab(this,'tab-gdocs')">🔗 Google Docs</button>
-      <button class="file-tab" onclick="switchTab(this,'tab-paste')">✏️ テキスト貼付</button>
-    </div>
+        <div class="upload-section" id="tab-gdocs">
+          <div class="gdocs-row">
+            <input class="gdocs-input" id="gdocsUrl" placeholder="Google Docs の共有URLを貼り付け">
+            <button class="gdocs-btn" onclick="importGoogleDoc()">取得</button>
+          </div>
+          <p style="font-size:11px;color:#9ca3af;margin-top:6px;">※「リンクを知っている全員が閲覧可」に設定してください</p>
+        </div>
 
-    <!-- Tab: File upload -->
-    <div class="upload-section active" id="tab-file">
-      <div class="upload-zone" id="uploadZone"
-        onclick="document.getElementById('fileInput').click()"
-        ondragover="event.preventDefault();this.style.borderColor='var(--sienna)'"
-        ondragleave="this.style.borderColor=''"
-        ondrop="handleDrop(event)">
-        <span class="upload-icon">📄</span>
-        <p>クリックまたはドラッグ＆ドロップ</p>
-        <p style="margin-top:4px;font-size:10px;">PDF・Word(.docx)・テキスト(.txt/.md) 対応</p>
+        <div class="upload-section" id="tab-paste">
+          <p style="font-size:12px;color:var(--text-sub);">下のエリアに直接貼り付けてください</p>
+        </div>
+
+        <textarea id="contractText" placeholder="契約書のテキストをここに貼り付け、またはファイルをアップロードしてください..." oninput="updateCount()"></textarea>
+        <div class="char-count"><span id="charCount">0</span> 文字</div>
+        <button class="btn-check" onclick="analyzeContract()">契約書をチェックする</button>
       </div>
-      <input type="file" id="fileInput" accept=".txt,.md,.pdf,.docx" style="display:none" onchange="handleFile(event)">
-      <div class="file-tag" id="fileTag">
-        <span id="fileTagName">—</span>
-        <button class="file-tag-close" onclick="clearFile()">✕</button>
-      </div>
     </div>
-
-    <!-- Tab: Google Docs -->
-    <div class="upload-section" id="tab-gdocs">
-      <div class="gdocs-row">
-        <input class="gdocs-input" id="gdocsUrl" placeholder="Google Docs の共有URL を貼り付け（閲覧権限が必要）">
-        <button class="gdocs-btn" onclick="importGoogleDoc()">取得</button>
-      </div>
-      <p style="font-size:10px;font-family:'DM Mono',monospace;color:rgba(26,23,20,0.4);margin-bottom:8px;">
-        ※ ドキュメントを「リンクを知っている全員が閲覧可」に設定してください
-      </p>
-    </div>
-
-    <!-- Tab: Paste (visible textarea below is shared) -->
-    <div class="upload-section" id="tab-paste" style="margin-bottom:8px;">
-      <p style="font-size:11px;font-family:'DM Mono',monospace;color:rgba(26,23,20,0.5);">
-        下のエリアに直接テキストを貼り付けてください
-      </p>
-    </div>
-
-    <div class="textarea-wrap">
-      <textarea id="contractText" placeholder="契約書の全文または条項をここに貼り付けてください...
-
-例：
-第1条（目的）
-本契約は、甲が乙に対して業務を委託し、乙がこれを受託することを目的とする。
-
-第2条（業務内容）
-乙は甲の指示に従い、以下の業務を行う..." oninput="updateCount()"></textarea>
-      <div class="char-count"><span id="charCount">0</span> 文字</div>
-    </div>
-
-    <button class="btn-check" id="btnCheck" onclick="analyzeContract()">
-      <span id="btnText">契約書をチェックする</span>
-      <div class="spinner" id="btnSpinner"></div>
-    </button>
   </div>
 
-  <!-- Right: Results -->
-  <div class="panel-result">
-    <div class="panel-label">解析結果</div>
-
-    <div class="empty-state" id="emptyState">
-      <div class="seal">⚖</div>
-      <p>契約書を入力してください</p>
+  <div>
+    <div id="emptyState" class="card">
+      <div class="empty-state">
+        <div class="icon">⚖️</div>
+        <p>契約書を入力してチェックを開始してください</p>
+      </div>
     </div>
-
-    <div class="result-content" id="resultContent"></div>
+    <div id="resultContent"></div>
   </div>
 </main>
 
 <script>
-  // Set PDF.js worker
-  if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  }
+  if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
   let selectedType = '自動検出';
+
+  function getApiKey() { return localStorage.getItem('lexai_apikey') || ''; }
+
+  function saveApiKey() {
+    const key = document.getElementById('apikeyInput').value.trim();
+    if (!key.startsWith('sk-')) { alert('APIキーの形式が正しくありません。\n「sk-ant-api03-」で始まるキーを入力してください。'); return; }
+    localStorage.setItem('lexai_apikey', key);
+    updateApiKeyStatus();
+    document.getElementById('apikeyModal').classList.remove('show');
+    alert('✅ APIキーを保存しました！\nこれで契約書のチェックができます。');
+  }
+
+  function openApiKeyModal() {
+    const k = getApiKey();
+    if (k) document.getElementById('apikeyInput').value = k;
+    document.getElementById('apikeyModal').classList.add('show');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('apikeyModal').addEventListener('click', e => { if (e.target===e.currentTarget) e.currentTarget.classList.remove('show'); });
+    updateApiKeyStatus();
+  });
+
+  function updateApiKeyStatus() {
+    const has = !!getApiKey();
+    document.getElementById('apikeyStatusIcon').textContent = has ? '✅' : '🔑';
+    document.getElementById('apikeyStatusText').textContent = has ? 'APIキー設定済' : 'APIキーを設定';
+    has ? document.getElementById('apikeyStatusBtn').classList.add('set') : document.getElementById('apikeyStatusBtn').classList.remove('set');
+  }
 
   function setType(el) {
     document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
@@ -783,10 +311,7 @@
     selectedType = el.textContent;
   }
 
-  function updateCount() {
-    const txt = document.getElementById('contractText').value;
-    document.getElementById('charCount').textContent = txt.length.toLocaleString();
-  }
+  function updateCount() { document.getElementById('charCount').textContent = document.getElementById('contractText').value.length.toLocaleString(); }
 
   function switchTab(btn, tabId) {
     document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
@@ -795,274 +320,155 @@
     document.getElementById(tabId).classList.add('active');
   }
 
-  function showFileTag(name) {
-    const tag = document.getElementById('fileTag');
-    document.getElementById('fileTagName').textContent = '✓ ' + name;
-    tag.classList.add('show');
-  }
+  function showFileTag(name) { document.getElementById('fileTagName').textContent = '✓ ' + name; document.getElementById('fileTag').classList.add('show'); }
+  function clearFile() { document.getElementById('fileTag').classList.remove('show'); document.getElementById('contractText').value = ''; document.getElementById('fileInput').value = ''; updateCount(); }
 
-  function clearFile() {
-    document.getElementById('fileTag').classList.remove('show');
-    document.getElementById('contractText').value = '';
-    document.getElementById('fileInput').value = '';
-    updateCount();
-  }
-
-  function handleDrop(e) {
-    e.preventDefault();
-    document.getElementById('uploadZone').style.borderColor = '';
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  }
-
-  function handleFile(e) {
-    const file = e.target.files[0];
-    if (file) processFile(file);
-  }
+  function handleDrop(e) { e.preventDefault(); document.getElementById('uploadZone').style.borderColor=''; const f=e.dataTransfer.files[0]; if(f) processFile(f); }
+  function handleFile(e) { const f=e.target.files[0]; if(f) processFile(f); }
 
   async function processFile(file) {
-    const name = file.name.toLowerCase();
     showFileTag(file.name);
-    if (name.endsWith('.pdf')) {
-      await extractPdf(file);
-    } else if (name.endsWith('.docx')) {
-      await extractDocx(file);
-    } else {
-      // txt / md
-      const reader = new FileReader();
-      reader.onload = ev => {
-        document.getElementById('contractText').value = ev.target.result;
-        updateCount();
-      };
-      reader.readAsText(file);
-    }
+    const n = file.name.toLowerCase();
+    if (n.endsWith('.pdf')) await extractPdf(file);
+    else if (n.endsWith('.docx')) await extractDocx(file);
+    else { const r=new FileReader(); r.onload=ev=>{document.getElementById('contractText').value=ev.target.result;updateCount();}; r.readAsText(file); }
   }
 
   async function extractPdf(file) {
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      let fullText = '';
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        fullText += content.items.map(item => item.str).join(' ') + '\n';
-      }
-      document.getElementById('contractText').value = fullText;
-      updateCount();
-    } catch (err) {
-      alert('PDFの読み込みに失敗しました。テキストとして保存されたPDFをお試しください。');
-      console.error(err);
-    }
+      const pdf = await pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+      let text='';
+      for(let i=1;i<=pdf.numPages;i++){const p=await pdf.getPage(i);const c=await p.getTextContent();text+=c.items.map(x=>x.str).join(' ')+'\n';}
+      document.getElementById('contractText').value=text; updateCount();
+    } catch(e){alert('PDFの読み込みに失敗しました。');}
   }
 
   async function extractDocx(file) {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer });
-      document.getElementById('contractText').value = result.value;
-      updateCount();
-    } catch (err) {
-      alert('Wordファイルの読み込みに失敗しました。');
-      console.error(err);
-    }
+    try { const r=await mammoth.extractRawText({arrayBuffer:await file.arrayBuffer()}); document.getElementById('contractText').value=r.value; updateCount(); }
+    catch(e){alert('Wordファイルの読み込みに失敗しました。');}
   }
 
   async function importGoogleDoc() {
-    const url = document.getElementById('gdocsUrl').value.trim();
-    if (!url) { alert('Google Docs の URL を入力してください。'); return; }
-
-    // Extract doc ID from URL
-    const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-    if (!match) { alert('Google Docs の URL の形式が正しくありません。'); return; }
-    const docId = match[1];
-
-    // Export as plain text
-    const exportUrl = `https://docs.google.com/document/d/${docId}/export?format=txt`;
-
-    try {
-      const res = await fetch(exportUrl);
-      if (!res.ok) throw new Error('fetch failed');
-      const text = await res.text();
-      document.getElementById('contractText').value = text;
-      updateCount();
-      showFileTag('Google Docs: ' + docId.slice(0, 12) + '...');
-      // Switch to paste tab so textarea is visible
-      document.querySelectorAll('.file-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.upload-section').forEach(s => s.classList.remove('active'));
-      document.querySelectorAll('.file-tab')[2].classList.add('active');
-      document.getElementById('tab-paste').classList.add('active');
-    } catch (err) {
-      alert('Google Docs の取得に失敗しました。\n・「リンクを知っている全員が閲覧可」の共有設定になっているか確認してください。\n・または、ドキュメントのテキストを直接コピーして「テキスト貼付」タブをお使いください。');
-      console.error(err);
-    }
+    const url=document.getElementById('gdocsUrl').value.trim();
+    if(!url){alert('URLを入力してください。');return;}
+    const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if(!m){alert('URLの形式が正しくありません。');return;}
+    try { const res=await fetch(`https://docs.google.com/document/d/${m[1]}/export?format=txt`); if(!res.ok)throw new Error(); document.getElementById('contractText').value=await res.text(); updateCount(); showFileTag('Google Docs'); }
+    catch{alert('Google Docsの取得に失敗しました。共有設定をご確認ください。');}
   }
 
   async function analyzeContract() {
-    const text = document.getElementById('contractText').value.trim();
-    if (!text) { alert('契約書のテキストを入力してください。'); return; }
-    if (text.length < 50) { alert('契約書のテキストが短すぎます。もう少し詳しく入力してください。'); return; }
+    const text=document.getElementById('contractText').value.trim();
+    if(!text){alert('契約書のテキストを入力してください。');return;}
+    if(text.length<50){alert('テキストが短すぎます。');return;}
+    const apiKey=getApiKey();
+    if(!apiKey){
+      openApiKeyModal();
+      alert('APIキーが設定されていません。\n右上の「APIキーを設定」からAnthropicのAPIキー（sk-ant-...）を入力してください。');
+      return;
+    }
 
-    const overlay = document.getElementById('loadingOverlay');
-    const loadingText = document.getElementById('loadingText');
-    overlay.classList.add('show');
+    document.getElementById('loadingOverlay').classList.add('show');
+    const steps=['契約書を解析中...','リスク条項を検出中...','改善提案を生成中...','結果をまとめています...'];
+    let idx=0;
+    const timer=setInterval(()=>{document.getElementById('loadingText').textContent=steps[++idx%steps.length];},1800);
 
-    const steps = ['契約書を解析中...', 'リスク条項を検出中...', '改善提案を生成中...', '結果をまとめています...'];
-    let stepIdx = 0;
-    const stepInterval = setInterval(() => {
-      stepIdx = (stepIdx + 1) % steps.length;
-      loadingText.textContent = steps[stepIdx];
-    }, 1800);
-
-    const prompt = `あなたは日本法に精通した契約書レビューの専門家です。
-以下の契約書を分析してください。
+    const prompt=`あなたは日本法に精通した契約書レビューの専門家です。以下の契約書を分析してください。
 
 契約書の種類: ${selectedType}
-
 契約書テキスト:
-${text.slice(0, 3500)}
+${text.slice(0,3500)}
 
-【重要】回答はJSON文字列のみ。マークダウン・コードブロック・説明文は一切不要。
-以下の形式のJSONのみ返してください:
+【重要】回答はJSON文字列のみ。マークダウン・コードブロック・説明文は一切不要。以下の形式のJSONのみ返してください:
 
 {"contractType":"契約書種別","riskScore":"高または中または低","riskScoreNum":50,"summary":"概要2文","risks":[{"level":"high","title":"タイトル","description":"説明","suggestion":"提案"}],"disadvantages":[{"title":"タイトル","description":"説明"}],"negotiations":[{"priority":"high","point":"交渉点","approach":"アプローチ方法","script":"実際の文例"}]}
 
 risksは3〜5個、negotiationsは3〜4個生成してください。文字列内にダブルクォートを使わないでください。`;
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-dangerous-direct-browser-access': 'true'
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-5',
-          max_tokens: 3000,
-          messages: [{ role: 'user', content: prompt }]
-        })
+      const res=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,messages:[{role:'user',content:prompt}]})
       });
-
-      const data = await res.json();
-
-      // APIエラーチェック
-      if (data.error) {
-        throw new Error('API Error: ' + data.error.message);
-      }
-
-      const raw = data.content.map(i => i.text || '').join('');
-
-      // { から } までを直接抽出（コードブロック等を完全無視）
-      const start = raw.indexOf('{');
-      const end = raw.lastIndexOf('}');
-      if (start === -1 || end === -1) throw new Error('JSONが見つかりませんでした\n\nResponse: ' + raw.slice(0, 200));
-      const jsonStr = raw.slice(start, end + 1);
-
+      const data=await res.json();
+      if(data.error) throw new Error(data.error.message);
+      const raw=data.content.map(i=>i.text||'').join('');
+      const s=raw.indexOf('{'),e=raw.lastIndexOf('}');
+      if(s===-1||e===-1) throw new Error('JSONが見つかりませんでした');
       let result;
-      try {
-        result = JSON.parse(jsonStr);
-      } catch (parseErr) {
-        // 制御文字・改行を除去して再試行
-        const cleaned = jsonStr.replace(/[\u0000-\u001F\u007F]/g, m => {
-          if (m === '\n') return '\\n';
-          if (m === '\r') return '\\r';
-          if (m === '\t') return '\\t';
-          return '';
-        });
-        try {
-          result = JSON.parse(cleaned);
-        } catch (e2) {
-          console.error('Raw response:', raw);
-          throw new Error('JSONパースエラー: ' + parseErr.message + '\n\nResponse先頭: ' + raw.slice(0, 300));
-        }
+      try { result=JSON.parse(raw.slice(s,e+1)); }
+      catch {
+        const cleaned=raw.slice(s,e+1).replace(/[\u0000-\u001F\u007F]/g,m=>m==='\n'?'\\n':m==='\r'?'\\r':m==='\t'?'\\t':'');
+        result=JSON.parse(cleaned);
       }
-
-      clearInterval(stepInterval);
-      overlay.classList.remove('show');
+      clearInterval(timer);
+      document.getElementById('loadingOverlay').classList.remove('show');
       renderResult(result);
-
-    } catch (err) {
-      clearInterval(stepInterval);
-      overlay.classList.remove('show');
-      console.error(err);
-      alert('解析中にエラーが発生しました。\n\n詳細: ' + err.message);
+    } catch(err) {
+      clearInterval(timer);
+      document.getElementById('loadingOverlay').classList.remove('show');
+      alert('エラーが発生しました: '+err.message);
     }
   }
 
   function renderResult(r) {
-    const scoreClass = r.riskScore === '高' ? 'high' : r.riskScore === '中' ? 'mid' : 'low';
-    const scoreLabel = r.riskScore === '高' ? '⚠ 高リスク' : r.riskScore === '中' ? '△ 中リスク' : '✓ 低リスク';
+    document.getElementById('emptyState').style.display='none';
+    const sc=r.riskScore==='高'?'high':r.riskScore==='中'?'mid':'low';
+    const label=r.riskScore==='高'?'⚠️ 高リスク':r.riskScore==='中'?'△ 中リスク':'✅ 低リスク';
 
-    let html = `
+    let html=`
       <div class="score-banner">
-        <div class="score-circle ${scoreClass}">${r.riskScoreNum}</div>
-        <div class="score-text">
-          <h2>${scoreLabel}</h2>
-          <p>契約書種別: ${r.contractType}</p>
+        <div class="score-donut ${sc}">${r.riskScoreNum}</div>
+        <div class="score-info">
+          <div class="risk-pill ${sc}">${label}</div>
+          <h2>${r.contractType}</h2>
+          <p>リスクスコア: ${r.riskScoreNum} / 100</p>
         </div>
       </div>
+      <div class="card"><div class="card-body">
+        <div class="section-label">📋 契約書概要</div>
+        <p style="font-size:13.5px;line-height:1.8;">${r.summary}</p>
+      </div></div>`;
 
-      <div class="result-section">
-        <div class="result-section-title">📋 契約書概要</div>
-        <div class="summary-box">${r.summary}</div>
-      </div>
-    `;
-
-    if (r.risks && r.risks.length > 0) {
-      html += `<div class="result-section"><div class="result-section-title">⚠ リスク条項 / 不利な条件</div>`;
-      r.risks.forEach(risk => {
-        html += `
-          <div class="risk-item ${risk.level}">
-            <div class="risk-item-header">
-              <span class="risk-badge ${risk.level}">${risk.level === 'high' ? '高' : risk.level === 'mid' ? '中' : '低'}リスク</span>
-              <span class="risk-title">${risk.title}</span>
-            </div>
-            <div class="risk-desc">${risk.description}</div>
-            ${risk.suggestion ? `<div class="risk-suggestion">${risk.suggestion}</div>` : ''}
-          </div>
-        `;
+    if(r.risks?.length){
+      html+=`<div class="card"><div class="card-body"><div class="section-label">⚠️ リスク条項</div><div class="item-list">`;
+      r.risks.forEach(risk=>{
+        html+=`<div class="risk-item ${risk.level}">
+          <div class="item-title"><span class="badge ${risk.level}">${risk.level==='high'?'高リスク':risk.level==='mid'?'中リスク':'低リスク'}</span>${risk.title}</div>
+          <div class="item-desc">${risk.description}</div>
+          ${risk.suggestion?`<div class="item-suggestion">${risk.suggestion}</div>`:''}
+        </div>`;
       });
-      html += `</div>`;
+      html+=`</div></div></div>`;
     }
 
-    if (r.disadvantages && r.disadvantages.length > 0) {
-      html += `<div class="result-section"><div class="result-section-title">⚡ 不利な条件</div>`;
-      r.disadvantages.forEach(d => {
-        html += `
-          <div class="risk-item mid">
-            <div class="risk-item-header">
-              <span class="risk-title">${d.title}</span>
-            </div>
-            <div class="risk-desc">${d.description}</div>
-          </div>
-        `;
+    if(r.disadvantages?.length){
+      html+=`<div class="card"><div class="card-body"><div class="section-label">⚡ 不利な条件</div><div class="item-list">`;
+      r.disadvantages.forEach(d=>{
+        html+=`<div class="risk-item neutral">
+          <div class="item-title">${d.title}</div>
+          <div class="item-desc">${d.description}</div>
+        </div>`;
       });
-      html += `</div>`;
+      html+=`</div></div></div>`;
     }
 
-    if (r.negotiations && r.negotiations.length > 0) {
-      html += `<div class="result-section"><div class="result-section-title">🤝 相手先への交渉・提案方法</div>`;
-      r.negotiations.forEach(n => {
-        const pri = n.priority || 'mid';
-        const priLabel = pri === 'high' ? '優先度：高' : pri === 'mid' ? '優先度：中' : '優先度：低';
-        html += `
-          <div class="nego-item ${pri}">
-            <div class="nego-header">
-              <span class="nego-priority ${pri}">${priLabel}</span>
-              <span class="nego-point">${n.point}</span>
-            </div>
-            <div class="nego-approach">${n.approach}</div>
-            ${n.script ? `<div class="nego-script">${n.script}</div>` : ''}
-          </div>
-        `;
+    if(r.negotiations?.length){
+      html+=`<div class="card"><div class="card-body"><div class="section-label">🤝 交渉・提案方法</div><div class="item-list">`;
+      r.negotiations.forEach(n=>{
+        const p=n.priority||'mid';
+        const pLabel=p==='high'?'優先度：高':p==='low'?'優先度：低':'優先度：中';
+        html+=`<div class="nego-item ${p}">
+          <div class="nego-title"><span class="badge ${p==='high'?'high':p==='low'?'low':'nego'}">${pLabel}</span>${n.point}</div>
+          <div class="nego-approach">${n.approach}</div>
+          ${n.script?`<div class="nego-script">${n.script}</div>`:''}
+        </div>`;
       });
-      html += `</div>`;
+      html+=`</div></div></div>`;
     }
 
-    document.getElementById('emptyState').style.display = 'none';
-    const rc = document.getElementById('resultContent');
-    rc.innerHTML = html;
-    rc.style.display = 'flex';
+    document.getElementById('resultContent').innerHTML=html;
   }
 </script>
 </body>
